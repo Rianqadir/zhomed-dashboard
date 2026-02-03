@@ -49,18 +49,30 @@ If you cannot log in even with the correct credentials:
 1. **Check Database Connection:**
    - Verify `DATABASE_URL` is set correctly in your environment variables
    - For Netlify: Go to Site Settings → Environment Variables → Add `DATABASE_URL`
+   - Test connection: Visit `/api/health` to check database status
 
-2. **Initialize Database:**
-   - Make sure you've run `node scripts/init-db.js` to create the users table and seed credentials
-   - For production (Netlify), you may need to run this script manually or set up a one-time initialization
+2. **Initialize Database (IMPORTANT):**
+   - **For Production (Netlify):** After deployment, call the init endpoint:
+     ```bash
+     curl -X POST https://your-site.netlify.app/api/init-db \
+       -H "Authorization: Bearer init-db-secret-token-change-in-production"
+     ```
+   - Or set `INIT_DB_TOKEN` environment variable and use that token
+   - **For Local:** Run `node scripts/init-db.js` to create tables and seed credentials
 
 3. **Check Browser Console:**
    - Open browser DevTools (F12) → Console tab
    - Look for any error messages when attempting to login
    - Check the Network tab to see the API response
 
-4. **Verify User Exists:**
-   - Run `node scripts/test-login.js` to verify the user exists in the database
+4. **Verify Database Connection:**
+   - Visit `/api/health` endpoint to check database connection status
+   - Check Netlify function logs for detailed error messages
+
+5. **Common Issues:**
+   - **"Database connection error"**: DATABASE_URL might be incorrect or database is not accessible
+   - **"Invalid email or password"**: Database not initialized - run init endpoint
+   - **Connection timeout**: Check if Neon database allows connections from Netlify IPs
 
 ## Deployment
 

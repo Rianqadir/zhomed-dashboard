@@ -31,8 +31,20 @@ export async function POST(request: Request) {
       `;
     } catch (dbError: any) {
       console.error('Database query error:', dbError);
+      console.error('Error details:', {
+        message: dbError?.message,
+        code: dbError?.code,
+        stack: dbError?.stack,
+        databaseUrl: process.env.DATABASE_URL ? 'Set (hidden)' : 'Not set'
+      });
+      
+      // Provide more specific error message
+      const errorMessage = dbError?.message || 'Unknown database error';
       return NextResponse.json(
-        { error: 'Database connection error. Please try again later.' },
+        { 
+          error: 'Database connection error. Please try again later.',
+          details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        },
         { status: 500 }
       );
     }
