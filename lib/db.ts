@@ -1,14 +1,39 @@
 import { neon } from '@neondatabase/serverless';
 
-// Get the database URL from environment variables
-const databaseUrl = process.env.DATABASE_URL;
+// Lazy initialization of database client
+// This prevents errors during build time when DATABASE_URL might not be available
+let sqlClient: ReturnType<typeof neon> | null = null;
 
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL environment variable is not set');
+function getSqlClient() {
+  if (!sqlClient) {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL environment variable is not set. Please configure it in your environment variables.');
+    }
+    sqlClient = neon(databaseUrl);
+  }
+  return sqlClient;
 }
 
-// Create a Neon database client
-export const sql = neon(databaseUrl);
+// Create a proxy that forwards all calls to the lazy-initialized client
+export const sql = new Proxy({} as ReturnType<typeof neon>, {
+  get(_target, prop) {
+    const client = getSqlClient();
+    const value = (client as any)[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
+    }
+    return value;
+  },
+  apply(_target, _thisArg, args) {
+    return getSqlClient().apply(null, args);
+  },
+}) as ReturnType<typeof neon>;
+
+// Helper function to check if database is available
+export function isDatabaseAvailable(): boolean {
+  return !!process.env.DATABASE_URL;
+}
 
 // Test database connection
 export async function testConnection() {
