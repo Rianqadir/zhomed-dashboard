@@ -4,7 +4,7 @@ import type { User } from "./types"
 
 const AUTH_STORAGE_KEY = "zubair_homes_auth"
 
-export async function login(email: string, password: string): Promise<Omit<User, "password"> | null> {
+export async function login(email: string, password: string): Promise<{ user: Omit<User, "password"> | null; error: string | null }> {
   try {
     const response = await fetch('/api/auth/login', {
       method: 'POST',
@@ -14,16 +14,17 @@ export async function login(email: string, password: string): Promise<Omit<User,
       body: JSON.stringify({ email, password }),
     })
 
+    const data = await response.json()
+
     if (!response.ok) {
-      return null
+      return { user: null, error: data.error || 'Login failed' }
     }
 
-    const user = await response.json()
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
-    return user
-  } catch (error) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data))
+    return { user: data, error: null }
+  } catch (error: any) {
     console.error('Login error:', error)
-    return null
+    return { user: null, error: error.message || 'Network error. Please check your connection.' }
   }
 }
 

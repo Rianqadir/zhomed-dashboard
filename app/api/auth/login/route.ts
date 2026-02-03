@@ -13,13 +13,32 @@ export async function POST(request: Request) {
       );
     }
     
-    const result = await sql`
-      SELECT id, email, password, role, name, created_at
-      FROM users
-      WHERE email = ${email}
-    `;
+    // Check if DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      console.error('DATABASE_URL is not set');
+      return NextResponse.json(
+        { error: 'Database configuration error. Please contact administrator.' },
+        { status: 500 }
+      );
+    }
+    
+    let result;
+    try {
+      result = await sql`
+        SELECT id, email, password, role, name, created_at
+        FROM users
+        WHERE email = ${email}
+      `;
+    } catch (dbError: any) {
+      console.error('Database query error:', dbError);
+      return NextResponse.json(
+        { error: 'Database connection error. Please try again later.' },
+        { status: 500 }
+      );
+    }
     
     if (result.length === 0) {
+      console.log(`Login attempt failed: User not found for email: ${email}`);
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -30,6 +49,7 @@ export async function POST(request: Request) {
     
     // For now, simple password comparison (in production, use bcrypt)
     if (user.password !== password) {
+      console.log(`Login attempt failed: Password mismatch for email: ${email}`);
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -46,11 +66,12 @@ export async function POST(request: Request) {
       createdAt: new Date(user.created_at),
     };
     
+    console.log(`Login successful for user: ${user.email}`);
     return NextResponse.json(userResponse);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error during login:', error);
     return NextResponse.json(
-      { error: 'Failed to login' },
+      { error: error.message || 'Failed to login. Please try again.' },
       { status: 500 }
     );
   }

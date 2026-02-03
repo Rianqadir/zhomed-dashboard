@@ -20,12 +20,12 @@ export default function LoginPage() {
     e.preventDefault()
     setError("")
 
-    const user = await login(email, password)
+    const { user, error: loginError } = await login(email, password)
 
     if (user) {
       router.push("/dashboard")
     } else {
-      setError("Invalid email or password")
+      setError(loginError || "Invalid email or password")
     }
   }
 
