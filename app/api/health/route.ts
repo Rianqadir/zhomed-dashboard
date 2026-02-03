@@ -15,13 +15,15 @@ export async function GET() {
     // Test database connection if configured
     if (isDatabaseAvailable()) {
       try {
-        await sql`SELECT 1 as test`;
+        const testResult = await sql`SELECT 1 as test, NOW() as current_time`;
         health.database.connected = true;
         health.database.message = 'Database connection successful';
+        health.database.testResult = testResult[0];
       } catch (dbError: any) {
         health.database.connected = false;
         health.database.error = dbError?.message || 'Connection failed';
         health.database.code = dbError?.code;
+        health.database.stack = process.env.NODE_ENV === 'development' ? dbError?.stack : undefined;
         health.status = 'degraded';
       }
     } else {

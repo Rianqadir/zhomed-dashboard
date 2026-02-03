@@ -1,21 +1,37 @@
-import { neon, NeonQueryFunction } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 
-// Get the database URL from environment variables
-const databaseUrl = process.env.DATABASE_URL;
+// Lazy initialization function
+function createSqlClient() {
+  const databaseUrl = process.env.DATABASE_URL;
+  
+  if (!databaseUrl) {
+    throw new Error(
+      'DATABASE_URL environment variable is not set. ' +
+      'Please configure it in Netlify environment variables.'
+    );
+  }
 
-if (!databaseUrl) {
-  console.warn('DATABASE_URL environment variable is not set');
+  // Initialize Neon client
+  // The neon() function returns a tagged template function
+  return neon(databaseUrl);
 }
 
-// Initialize Neon client with proper configuration for serverless environments
-// Use fetch API for better compatibility with serverless functions
-const sql: NeonQueryFunction<false, false> = databaseUrl 
-  ? neon(databaseUrl, {
-      fetchConnectionCache: true,
-    })
-  : (() => {
-      throw new Error('DATABASE_URL environment variable is not set. Please configure it in your environment variables.');
-    })() as any;
+// Cache the client to avoid re-initialization
+let sqlClient: ReturnType<typeof neon> | null = null;
+
+// Get or create the SQL client
+function getSqlClient() {
+  if (!sqlClient) {
+    sqlClient = createSqlClient();
+  }
+  return sqlClient;
+}
+
+// Export sql as the tagged template function
+// This ensures the client is initialized on first use
+export const sql = ((strings: TemplateStringsArray, ...values: any[]) => {
+  return getSqlClient()(strings, ...values);
+}) as ReturnType<typeof neon>;
 
 // Helper function to check if database is available
 export function isDatabaseAvailable(): boolean {
@@ -25,19 +41,14 @@ export function isDatabaseAvailable(): boolean {
 // Test database connection
 export async function testConnection() {
   try {
-    if (!databaseUrl) {
-      throw new Error('DATABASE_URL is not configured');
-    }
     const result = await sql`SELECT NOW() as current_time`;
     console.log('Database connected successfully:', result[0]);
     return true;
-  } catch (error) {
-    console.error('Database connection error:', error);
+  } catch (error: any) {
+    console.error('Database connection error:', error?.message || error);
     throw error;
   }
 }
-
-export { sql };
 
 
 

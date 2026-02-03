@@ -24,25 +24,50 @@ export async function POST(request: Request) {
     
     let result;
     try {
+      // First, test if users table exists
       result = await sql`
         SELECT id, email, password, role, name, created_at
         FROM users
         WHERE email = ${email}
       `;
     } catch (dbError: any) {
-      console.error('Database query error:', dbError);
-      console.error('Error details:', {
-        message: dbError?.message,
-        code: dbError?.code,
-        stack: dbError?.stack,
-        databaseUrl: process.env.DATABASE_URL ? 'Set (hidden)' : 'Not set'
+      const errorMessage = dbError?.message || 'Unknown database error';
+      const errorCode = dbError?.code;
+      
+      console.error('Database query error:', {
+        message: errorMessage,
+        code: errorCode,
+        name: dbError?.name,
+        databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not set',
+        stack: process.env.NODE_ENV === 'development' ? dbError?.stack : undefined
       });
       
-      // Provide more specific error message
-      const errorMessage = dbError?.message || 'Unknown database error';
+      // Check if it's a table doesn't exist error
+      if (errorMessage.includes('does not exist') || errorMessage.includes('relation') || errorCode === '42P01') {
+        return NextResponse.json(
+          { 
+            error: 'Database not initialized. Please initialize the database first.',
+            hint: 'Call /api/init-db endpoint to initialize the database.'
+          },
+          { status: 500 }
+        );
+      }
+      
+      // Check if it's a connection error
+      if (errorMessage.includes('connection') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('timeout')) {
+        return NextResponse.json(
+          { 
+            error: 'Cannot connect to database. Please check your DATABASE_URL configuration.',
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+          },
+          { status: 500 }
+        );
+      }
+      
+      // Generic database error
       return NextResponse.json(
         { 
-          error: 'Database connection error. Please try again later.',
+          error: 'Database error occurred. Please try again later.',
           details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
         },
         { status: 500 }

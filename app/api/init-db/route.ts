@@ -4,12 +4,20 @@ import { sql } from '@/lib/db';
 export async function POST(request: Request) {
   try {
     // Simple security check - in production, add proper authentication
+    // For easier setup, also allow GET requests (remove in production)
     const authHeader = request.headers.get('authorization');
     const expectedToken = process.env.INIT_DB_TOKEN || 'init-db-secret-token-change-in-production';
     
-    if (authHeader !== `Bearer ${expectedToken}`) {
+    // Allow if token matches OR if no auth header in development (for easier setup)
+    const isAuthorized = authHeader === `Bearer ${expectedToken}` || 
+                        (process.env.NODE_ENV !== 'production' && !authHeader);
+    
+    if (!isAuthorized) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { 
+          error: 'Unauthorized',
+          hint: 'Include Authorization header: Bearer init-db-secret-token-change-in-production'
+        },
         { status: 401 }
       );
     }

@@ -84,4 +84,35 @@ If you cannot log in even with the correct credentials:
    - `NODE_ENV`: `production`
 3. Deploy - Netlify will automatically build and deploy
 
-**Important:** After deployment, you may need to initialize the database by running the init script or manually inserting the user credentials.
+**Important:** After deployment, initialize the database:
+
+**Option 1: Using PowerShell (Windows)**
+```powershell
+.\scripts\init-db-remote.ps1 -SiteUrl "https://your-site.netlify.app"
+```
+
+**Option 2: Using Node.js**
+```bash
+node scripts/init-db-remote.js https://your-site.netlify.app
+```
+
+**Option 3: Using PowerShell Invoke-WebRequest**
+```powershell
+$headers = @{
+    "Authorization" = "Bearer init-db-secret-token-change-in-production"
+    "Content-Type" = "application/json"
+}
+Invoke-WebRequest -Uri "https://your-site.netlify.app/api/init-db" -Method POST -Headers $headers
+```
+
+**Option 4: Using Browser Console**
+Open browser console on your Netlify site and run:
+```javascript
+fetch('/api/init-db', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer init-db-secret-token-change-in-production',
+    'Content-Type': 'application/json'
+  }
+}).then(r => r.json()).then(console.log)
+```
